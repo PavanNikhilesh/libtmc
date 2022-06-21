@@ -3027,10 +3027,12 @@ void memipc_master_handle_request(int read_req_type,
 				  unsigned char *memipc_read_buffer,
 				  struct memipc_thread_params *thread)
 {
+	static int thread_last_cpu = -1, last_newline = 1;
+	struct timespec ts;
+	int client_index;
 	char buffer[19];
 	char zero = 0;
-	static int thread_last_cpu = -1, last_newline = 1;
-	int client_index;
+	int s;
 
 	(void)zero;
 
@@ -3164,8 +3166,10 @@ void memipc_master_handle_request(int read_req_type,
 		if (thread->foreign_desc != NULL)
 			memipc_detach_thread_from_desc(thread->foreign_desc);
 		if (thread->pid == getpid()) {
+			clock_gettime(CLOCK_REALTIME, &ts);
+			ts.tv_sec += 5;
 			/* Thread from the same process, join it. */
-			pthread_join(thread->thread_id, NULL);
+			pthread_timedjoin_np(thread->thread_id, NULL, &ts);
 		}
 #if ISOLATION_MONITOR_IN_MASTER
 #ifdef DEBUG_LOG_ISOL_CHANGES
@@ -4799,8 +4803,12 @@ static int client_text_handler(int client_index, const char *line)
 				memipc_detach_thread_from_desc(
 						       thread->foreign_desc);
 			if (thread->pid == getpid()) {
+				struct timespec ts;
+
+				clock_gettime(CLOCK_REALTIME, &ts);
+				ts.tv_sec += 5;
 				/* Thread from the same process, join it. */
-				pthread_join(thread->thread_id, NULL);
+				pthread_timedjoin_np(thread->thread_id, NULL, &ts);
 			}
 #if ISOLATION_MONITOR_IN_MASTER
 #ifdef DEBUG_LOG_ISOL_CHANGES
@@ -4850,8 +4858,12 @@ static int client_disconnect_handler(int client_index)
 		if (thread->foreign_desc != NULL)
 			memipc_detach_thread_from_desc(thread->foreign_desc);
 		if (thread->pid == getpid()) {
+			struct timespec ts;
+
+			clock_gettime(CLOCK_REALTIME, &ts);
+			ts.tv_sec += 5;
 			/* Thread from the same process, join it. */
-			pthread_join(thread->thread_id, NULL);
+			pthread_timedjoin_np(thread->thread_id, NULL, &ts);
 		}
 #if ISOLATION_MONITOR_IN_MASTER
 #ifdef DEBUG_LOG_ISOL_CHANGES
